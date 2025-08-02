@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Rekomendasi Sekolah</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .range-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: -0.5rem;
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+        .loading {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid #3b82f6;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Loading indicator -->
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="max-w-4xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+        <div class="bg-white p-6 sm:p-8 rounded-lg shadow-md">
+            <div class="text-center mb-8">
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Sistem Rekomendasi Sekolah</h1>
+                <p class="mt-2 text-gray-600">Temukan sekolah terbaik berdasarkan preferensi Anda</p>
+            </div>
+
+            <form id="recommendationForm" class="space-y-6">
+                <!-- Location Section -->
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <h2 class="text-lg font-medium text-blue-800 mb-3">Lokasi Anda</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Latitude</label>
+                            <input type="text" id="lat" readonly 
+                                   class="w-full bg-gray-100 border border-gray-300 rounded-md px-3 py-2">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Longitude</label>
+                            <input type="text" id="lon" readonly 
+                                   class="w-full bg-gray-100 border border-gray-300 rounded-md px-3 py-2">
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <button type="button" onclick="getLocation()" 
+                                class="text-sm bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
+                            Dapatkan Lokasi Sekarang
+                        </button>
+                        <span id="locationStatus" class="ml-3 text-sm text-gray-600"></span>
+                    </div>
+                </div>
+
+                <!-- School Type -->
+                <div>
+                    <label class="block text-lg font-medium text-gray-900 mb-2">Jenis Sekolah</label>
+                    <select id="jenjang" required
+                            class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="" disabled selected>-- Pilih Jenjang Sekolah --</option>
+                        <option value="SD">Sekolah Dasar (SD)</option>
+                        <option value="SMP">Sekolah Menengah Pertama (SMP)</option>
+                        <option value="SMA">Sekolah Menengah Atas (SMA)</option>
+                        <option value="SMK">Sekolah Menengah Kejuruan (SMK)</option>
+                        <option value="MAN">Madrasah Aliyah Negeri (MAN)</option>
+                    </select>
+                </div>
+
+                <!-- Facilities -->
+                <div>
+                    <label class="block text-lg font-medium text-gray-900 mb-2">
+                        Fasilitas yang Diinginkan
+                        <span class="text-sm font-normal text-gray-500">(pisahkan dengan koma)</span>
+                    </label>
+                    <input type="text" id="fasilitas" placeholder="Contoh: Laboratorium komputer, Perpustakaan, Lapangan olahraga"
+                           class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-blue-500 focus:border-blue-500">
+                    <p class="mt-1 text-sm text-gray-500">Biarkan kosong jika tidak ada preferensi khusus</p>
+                </div>
+
+                <!-- Extracurricular -->
+                <div>
+                    <label class="block text-lg font-medium text-gray-900 mb-2">
+                        Ekstrakurikuler yang Diinginkan
+                        <span class="text-sm font-normal text-gray-500">(pisahkan dengan koma)</span>
+                    </label>
+                    <input type="text" id="ekskul" placeholder="Contoh: Pramuka, Basket, Musik"
+                           class="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-blue-500 focus:border-blue-500">
+                    <p class="mt-1 text-sm text-gray-500">Biarkan kosong jika tidak ada preferensi khusus</p>
+                </div>
+
+                <!-- Preferences -->
+                <div class="space-y-6">
+                    <h2 class="text-lg font-medium text-gray-900">Atur Preferensi Anda</h2>
+                    
+                    <!-- Facilities Preference -->
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <label class="font-medium">Fasilitas</label>
+                            <span id="pref_fasilitas_label" class="font-semibold text-blue-600">0</span>
+                        </div>
+                        <input type="range" id="pref_fasilitas" min="0" max="10" value="0"
+                               class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                               oninput="updateLabel('pref_fasilitas', this.value)">
+                        <div class="range-labels">
+                            <span>Tidak Penting</span>
+                            <span>Sangat Penting</span>
+                        </div>
+                    </div>
+
+                    <!-- Extracurricular Preference -->
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <label class="font-medium">Ekstrakurikuler</label>
+                            <span id="pref_ekskul_label" class="font-semibold text-blue-600">0</span>
+                        </div>
+                        <input type="range" id="pref_ekskul" min="0" max="10" value="0"
+                               class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                               oninput="updateLabel('pref_ekskul', this.value)">
+                        <div class="range-labels">
+                            <span>Tidak Penting</span>
+                            <span>Sangat Penting</span>
+                        </div>
+                    </div>
+
+                    <!-- Distance Preference -->
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <label class="font-medium">Jarak dari Lokasi</label>
+                            <span id="pref_jarak_label" class="font-semibold text-blue-600">0</span>
+                        </div>
+                        <input type="range" id="pref_jarak" min="0" max="10" value="0"
+                               class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                               oninput="updateLabel('pref_jarak', this.value)">
+                        <div class="range-labels">
+                            <span>Tidak Penting</span>
+                            <span>Sangat Penting</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="pt-4">
+                    <button type="submit"
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md transition duration-300">
+                        Cari Rekomendasi Sekolah
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Update range labels
+        function updateLabel(id, value) {
+            document.getElementById(id + '_label').textContent = value;
+        }
+
+        // Get user location
+        async function getLocation() {
+            const statusElement = document.getElementById('locationStatus');
+            statusElement.textContent = 'Mengambil lokasi...';
+            statusElement.className = 'ml-3 text-sm text-blue-600';
+
+            if (navigator.geolocation) {
+                try {
+                    const position = await new Promise((resolve, reject) => {
+                        navigator.geolocation.getCurrentPosition(resolve, reject);
+                    });
+                    
+                    document.getElementById('lat').value = position.coords.latitude.toFixed(6);
+                    document.getElementById('lon').value = position.coords.longitude.toFixed(6);
+                    statusElement.textContent = 'Lokasi berhasil diperoleh';
+                    statusElement.className = 'ml-3 text-sm text-green-600';
+                } catch (error) {
+                    console.error('Error getting location:', error);
+                    let errorMessage = 'Gagal mengambil lokasi';
+                    if (error.code === error.PERMISSION_DENIED) {
+                        errorMessage = 'Izin lokasi ditolak. Harap aktifkan izin lokasi.';
+                    } else if (error.code === error.POSITION_UNAVAILABLE) {
+                        errorMessage = 'Informasi lokasi tidak tersedia.';
+                    } else if (error.code === error.TIMEOUT) {
+                        errorMessage = 'Permintaan lokasi timeout.';
+                    }
+                    statusElement.textContent = errorMessage;
+                    statusElement.className = 'ml-3 text-sm text-red-600';
+                }
+            } else {
+                statusElement.textContent = 'Browser tidak mendukung geolokasi';
+                statusElement.className = 'ml-3 text-sm text-red-600';
+            }
+        }
+
+        // Form submission
+        async function submitForm(event) {
+            event.preventDefault();
+            
+            const loadingElement = document.getElementById('loading');
+            loadingElement.style.display = 'flex';
+
+            try {
+                const lat = document.getElementById('lat').value;
+                const lon = document.getElementById('lon').value;
+                const jenjang = document.getElementById('jenjang').value.trim();
+                const fasilitas = document.getElementById('fasilitas').value
+                    .split(',')
+                    .map(f => f.trim())
+                    .filter(Boolean);
+                const ekskul = document.getElementById('ekskul').value
+                    .split(',')
+                    .map(e => e.trim())
+                    .filter(Boolean);
+                const pref_fasilitas = parseInt(document.getElementById('pref_fasilitas').value);
+                const pref_ekskul = parseInt(document.getElementById('pref_ekskul').value);
+                const pref_jarak = parseInt(document.getElementById('pref_jarak').value);
+
+                // Validate form
+                if (!jenjang) {
+                    alert("Pilih jenis sekolah yang ingin dicari terlebih dahulu!");
+                    return;
+                }
+
+                if (pref_fasilitas > 0 && fasilitas.length === 0) {
+                    alert("Isi Fasilitas yang diinginkan jika preferensinya lebih dari 0.");
+                    return;
+                }
+
+                if (pref_ekskul > 0 && ekskul.length === 0) {
+                    alert("Isi Ekstrakurikuler yang diinginkan jika preferensinya lebih dari 0.");
+                    return;
+                }
+
+                if (pref_fasilitas === 0 && pref_ekskul === 0 && pref_jarak === 0) {
+                    alert("Setidaknya satu preferensi harus lebih dari 0.");
+                    return;
+                }
+
+                const data = {
+                    lat, lon, jenjang, fasilitas, ekskul,
+                    pref_fasilitas, pref_ekskul, pref_jarak
+                };
+
+                const response = await fetch('/recommend', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    window.location.href = "/results";
+                } else {
+                    const err = await response.json();
+                    alert(err.error || "Terjadi kesalahan saat memproses rekomendasi.");
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert("Terjadi kesalahan saat mengirim data.");
+            } finally {
+                loadingElement.style.display = 'none';
+            }
+        }
+
+        // Initialize form
+        document.getElementById('recommendationForm').addEventListener('submit', submitForm);
+        window.addEventListener('load', getLocation);
+    </script>
+</body>
+</html>
