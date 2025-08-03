@@ -41,6 +41,6 @@ This project is a **web-based school recommendation system** using fuzzy logic, 
 
 ## 📺 Demo Video
 
-[![Watch the Demo](https://youtu.be/QReEand8NGs)
+[![Watch the Demo](https://youtu.be/QReEand8NGs?si=HiHnAFrgo7bSfp8a)
 
 
