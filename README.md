@@ -24,7 +24,7 @@ This project is a **web-based school recommendation system** using fuzzy logic, 
 1. **User inputs preferences**:
    - School level (elementary, junior high, senior high)
    - Desired facilities and extracurriculars
-   - Importance level (0–5) for facilities, activities, and distance
+   - Importance level (0–10) for facilities, Extracurricular, and distance
 
 2. **System calculates scores**:
    - Uses fuzzy logic to assess:
